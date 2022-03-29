@@ -71,25 +71,28 @@ def parse_html_to_csv():
 def func(x, a, b, c):
     return a * np.exp(b * x) + c
 
-def plot_csv( after_date ):
+def plot_csv( after_date, fit = False ):
     df = pd.read_csv(CSV_FILE)
     #df['新增境外输入'] = df['新增境外输入性新冠肺炎确诊病例'] + df['新增境外输入性无症状感染者'] + df['新增境外输入']
     #df['新增本土'] = df['新增本土新冠肺炎确诊病例'] + df['新增本土无症状感染者']
     print(df)
 
     df_plot = df[ df['日期'] > after_date ]
-    xdata = df_plot.index
-    xdata -= xdata[0]
-    ydata = df_plot['新增本土无症状感染者'] + df_plot['新增本土新冠肺炎确诊病例']
-    #print(xdata, ydata)
 
-    popt, pcov = curve_fit(func, xdata, ydata)
-    fit_ydata = func(xdata, *popt)
-    fit_label = '拟合曲线(a * exp(b * x) + c): a=%5.3f, b=%5.3f, c=%5.3f' % tuple(popt)
+    if fit:
+        xdata = df_plot.index
+        xdata -= xdata[0]
+        ydata = df_plot['新增本土无症状感染者'] + df_plot['新增本土新冠肺炎确诊病例']
+        #print(xdata, ydata)
+        popt, pcov = curve_fit(func, xdata, ydata)
+        fit_ydata = func(xdata, *popt)
+        fit_label = '拟合曲线(a * exp(b * x) + c): a=%5.3f, b=%5.3f, c=%5.3f' % tuple(popt)
 
     df_plot.index = df_plot['日期']
     df_plot = df_plot[ ['新增境外输入性新冠肺炎确诊病例','新增境外输入性无症状感染者','新增本土新冠肺炎确诊病例','新增本土无症状感染者'] ]
-    df_plot[ fit_label ] = fit_ydata
+
+    if fit:
+        df_plot[ fit_label ] = fit_ydata
 
     df_plot.plot(
         title='上海新冠疫情趋势\n(数据来源: 上海市卫健委官网)',
@@ -123,7 +126,7 @@ def datetime_today():
 
 def cli_help():
     syntax_tips = '''Syntax:
-    __argv0__ [-v] [-update] [-since=20220201] [-days=90]
+    __argv0__ [-v] [-update] [-since=20220201] [-days=90] [-fit]
 '''.replace('__argv0__',os.path.basename(sys.argv[0]))
     print(syntax_tips)
 
@@ -137,10 +140,14 @@ def cli_main():
     params, options = parse_params_options(sys.argv)
 
     plot_since_date = PLOT_SINCE_DATE
+    fit = False
     for k in options:
         if k in ['-v', '--version']:
             print(__version__, '\n')
             return
+
+        if k in ['-fit']:
+            fit = True
 
         if k.startswith('-since='):
             since_str = k.replace('-since=','')
@@ -153,6 +160,6 @@ def cli_main():
     if ('-update' in options) or (not os.path.exists(CSV_FILE)) or out_of_date(CSV_FILE):
         parse_html_to_csv()
 
-    plot_csv(plot_since_date)
+    plot_csv(plot_since_date, fit)
 
 cli_main()
