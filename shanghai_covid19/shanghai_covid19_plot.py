@@ -73,7 +73,7 @@ def plot_csv( after_date ):
     xdata = df_plot.index
     xdata -= xdata[0]
     ydata = df_plot['新增本土无症状感染者'] + df_plot['新增本土新冠肺炎确诊病例']
-    print(xdata, ydata)
+    #print(xdata, ydata)
 
     popt, pcov = curve_fit(func, xdata, ydata)
     fit_ydata = func(xdata, *popt)
