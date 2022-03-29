@@ -2,8 +2,11 @@
 
 import os, sys, requests, time
 import datetime as dt
+import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+
+from scipy.optimize import curve_fit
 
 __version__ = '1.0.0'
 
@@ -57,6 +60,9 @@ def parse_html_to_csv():
     print(df)
     df.to_csv(CSV_FILE, index=False)
 
+def func(x, a, b, c):
+    return a * np.exp(b * x) + c
+
 def plot_csv( after_date ):
     df = pd.read_csv(CSV_FILE)
     #df['新增境外输入'] = df['新增境外输入性新冠肺炎确诊病例'] + df['新增境外输入性无症状感染者'] + df['新增境外输入']
@@ -64,8 +70,18 @@ def plot_csv( after_date ):
     print(df)
 
     df_plot = df[ df['日期'] > after_date ]
+    xdata = df_plot.index
+    xdata -= xdata[0]
+    ydata = df_plot['新增本土无症状感染者'] + df_plot['新增本土新冠肺炎确诊病例']
+    print(xdata, ydata)
+
+    popt, pcov = curve_fit(func, xdata, ydata)
+    fit_ydata = func(xdata, *popt)
+    fit_label = '拟合曲线(a * exp(b * x) + c): a=%5.3f, b=%5.3f, c=%5.3f' % tuple(popt)
+
     df_plot.index = df_plot['日期']
     df_plot = df_plot[ ['新增境外输入性新冠肺炎确诊病例','新增境外输入性无症状感染者','新增本土新冠肺炎确诊病例','新增本土无症状感染者'] ]
+    df_plot[ fit_label ] = fit_ydata
 
     df_plot.plot(
         title='上海新冠疫情趋势\n(数据来源: 上海市卫健委官网)',
