@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import os, sys, requests, time
+import os, sys, requests, time, re
 import datetime as dt
 import numpy as np
 import pandas as pd
@@ -14,6 +14,7 @@ HEADERS = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleW
 SHANGHAI_GOV_URL = 'https://wsjkw.sh.gov.cn/xwfb/index{1}.html'
 PARSE_PAGES = 50
 KEYS = ['新增本土新冠肺炎确诊病例','新增本土无症状感染者','新增境外输入性新冠肺炎确诊病例','新增境外输入性无症状感染者','治愈出院','解除医学观察无症状感染者','新增境外输入']
+YESTERDAY_PATTERN = '昨日新增本土新冠肺炎确诊病例96例、无症状感染者4381例，新增境外输入性确诊病例11例、无症状感染者1例'
 CSV_FILE = 'shanghai_covid19_data.csv'
 PLOT_SINCE_DATE = '2022-02-01'
 
@@ -27,7 +28,14 @@ def parse_html_to_csv():
         r.encoding = 'utf-8'
         lines = r.text.split('\n')
         for line in lines:
-            if ' target="_blank">上海20' in line:
+            if ' target="_blank">昨日新增本土新冠肺炎确诊病例' in line:
+                line = line.split(' target="_blank">昨日新增本土新冠肺炎确诊病例')[1].split('</a><span')[0]
+                result = re.findall(r'\d+', line)
+                yesterday = (datetime_today() - dt.timedelta(1)).date()
+                row = [yesterday, result[0], result[1], result[2], result[3], 0, 0, 0]
+                table.append(row)
+
+            elif ' target="_blank">上海20' in line:
                 line = line.split(' target="_blank">上海')[1].split('</a><span')[0]
                 line = line.replace('，',' ').replace(',',' ').replace('日','日 ').replace('  ',' ').strip()
                 print(line)
