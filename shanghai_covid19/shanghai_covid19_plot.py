@@ -11,7 +11,7 @@ HEADERS = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleW
 SHANGHAI_GOV_URL = 'https://wsjkw.sh.gov.cn/xwfb/index{1}.html'
 PARSE_PAGES = 50
 KEYS = ['新增本土新冠肺炎确诊病例','新增本土无症状感染者','新增境外输入性新冠肺炎确诊病例','新增境外输入性无症状感染者','治愈出院','解除医学观察无症状感染者','新增境外输入']
-CSV_FILE = 'data/shanghai_covid19_data.csv'
+CSV_FILE = 'shanghai_covid19_data.csv'
 PLOT_SINCE_DATE = '2022-02-01'
 
 def parse_html_to_csv():
