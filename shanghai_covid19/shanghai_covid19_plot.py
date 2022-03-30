@@ -98,8 +98,9 @@ def plot_csv( since_date, fit = False ):
         fit_ydata = func(xdata, *popt)
         fit_label = ('\n拟合曲线:\ny = a * exp(b * x) + c\na=%5.3f, b=%5.3f, c=%5.3f\n' % tuple(popt))
         fit_label += '\n预估新增 (确诊+无症状):'
-        for i in range(3):
-            fit_label += '\n' + (datetime_today() + dt.timedelta(1+i)).strftime('%Y-%m-%d') + ': '+str(int(func((xdata[-1]+1+i), *popt)))
+        for i in range(5):
+            fit_label += '\n' + (datetime_today() + dt.timedelta(i)).strftime('%Y-%m-%d') + ': '+str(int(func((xdata[-1]+1+i), *popt)))
+        fit_label += '\n\n阻断传播，将早日迎来拐点'
 
     array_plot = df_plot[['日期','新增本土新冠肺炎确诊病例','新增本土无症状感染者','新增境外输入性新冠肺炎确诊病例','新增境外输入性无症状感染者']].tail(20).values
 
@@ -117,13 +118,14 @@ def plot_csv( since_date, fit = False ):
     ax0.axis('off')
     ax0.table(
         cellText=array_plot,
-        colLabels=['日期','本土病例','本土感染者','输入病例','输入感染者'],
+        colLabels=['日期','本土确诊','本土无症状','输入确诊','输入无症状'],
         loc='center',
         )
+    ax0.set_title('上海 2022 新冠疫情\n(数据来源: 上海市卫健委官网)')
 
     df_plot.plot(
         ax=ax1,
-        title='上海新冠疫情趋势\n(数据来源: 上海市卫健委官网)',
+        title='趋势图',
         xlabel='日期',
         ylabel='人数',
         figsize= (12,6),
