@@ -16,9 +16,11 @@ PARSE_PAGES = 50
 KEYS = ['新增本土新冠肺炎确诊病例','新增本土无症状感染者','新增境外输入性新冠肺炎确诊病例','新增境外输入性无症状感染者','治愈出院','解除医学观察无症状感染者','新增境外输入']
 YESTERDAY_PATTERN = '昨日新增本土新冠肺炎确诊病例96例、无症状感染者4381例，新增境外输入性确诊病例11例、无症状感染者1例'
 CSV_FILE = 'shanghai_covid19_data.csv'
-PLOT_SINCE_DATE = '2022-02-01'
+PLOT_SINCE_DATE = '2022-03-01'
 
-def parse_html_to_csv():
+def parse_html_to_csv(since_date):
+    since_date = (dt.datetime.strptime(since_date, '%Y-%m-%d')).date()
+
     table = []
     for i in range(PARSE_PAGES):
         page_id = ('_' + str(i+1)) if (i>0) else ''
@@ -29,10 +31,15 @@ def parse_html_to_csv():
         lines = r.text.split('\n')
         for line in lines:
             if ' target="_blank">昨日新增本土新冠肺炎确诊病例' in line:
-                line = line.split(' target="_blank">昨日新增本土新冠肺炎确诊病例')[1].split('</a><span')[0]
+                line = line.split(' target="_blank">昨日新增本土新冠肺炎确诊病例')[1]
+                items = line.split('</a><span class="time">')
+                line = items[0]
+                date_str = items[1].split('</span></li>')[0]
+                date = (dt.datetime.strptime(date_str, '%Y-%m-%d') - dt.timedelta(1)).date()
+                print(date, line)
+
                 result = re.findall(r'\d+', line)
-                yesterday = (datetime_today() - dt.timedelta(1)).date()
-                row = [yesterday, result[0], result[1], result[2], result[3], 0, 0, 0]
+                row = [date, result[0], result[1], result[2], result[3], 0, 0, 0]
                 table.append(row)
 
             elif ' target="_blank">上海20' in line:
@@ -62,6 +69,9 @@ def parse_html_to_csv():
                     row.append(n)
                 table.append(row)
 
+        if (date is not None) and (date < since_date):
+            break
+
     df = pd.DataFrame(table, columns=['日期']+KEYS)
     df = df.sort_values(by='日期', ascending=True).reset_index(drop=True)
 
@@ -71,13 +81,13 @@ def parse_html_to_csv():
 def func(x, a, b, c):
     return a * np.exp(b * x) + c
 
-def plot_csv( after_date, fit = False ):
+def plot_csv( since_date, fit = False ):
     df = pd.read_csv(CSV_FILE)
     #df['新增境外输入'] = df['新增境外输入性新冠肺炎确诊病例'] + df['新增境外输入性无症状感染者'] + df['新增境外输入']
     #df['新增本土'] = df['新增本土新冠肺炎确诊病例'] + df['新增本土无症状感染者']
     print(df)
 
-    df_plot = df[ df['日期'] > after_date ]
+    df_plot = df[ df['日期'] > since_date ]
 
     if fit:
         xdata = df_plot.index
@@ -86,26 +96,44 @@ def plot_csv( after_date, fit = False ):
         #print(xdata, ydata)
         popt, pcov = curve_fit(func, xdata, ydata)
         fit_ydata = func(xdata, *popt)
-        fit_label = '拟合曲线(a * exp(b * x) + c): a=%5.3f, b=%5.3f, c=%5.3f' % tuple(popt)
+        fit_label = ('\n拟合曲线:\ny = a * exp(b * x) + c\na=%5.3f, b=%5.3f, c=%5.3f\n' % tuple(popt))
+        fit_label += '\n预估新增 (确诊+无症状):'
+        for i in range(3):
+            fit_label += '\n' + (datetime_today() + dt.timedelta(1+i)).strftime('%Y-%m-%d') + ': '+str(int(func((xdata[-1]+1+i), *popt)))
+
+    array_plot = df_plot[['日期','新增本土新冠肺炎确诊病例','新增本土无症状感染者','新增境外输入性新冠肺炎确诊病例','新增境外输入性无症状感染者']].tail(20).values
 
     df_plot.index = df_plot['日期']
-    df_plot = df_plot[ ['新增境外输入性新冠肺炎确诊病例','新增境外输入性无症状感染者','新增本土新冠肺炎确诊病例','新增本土无症状感染者'] ]
+    df_plot = df_plot[ ['新增本土新冠肺炎确诊病例','新增本土无症状感染者','新增境外输入性新冠肺炎确诊病例','新增境外输入性无症状感染者'] ]
 
     if fit:
         df_plot[ fit_label ] = fit_ydata
 
+    # create figure 2x1
+    fig, (ax0, ax1) = plt.subplots(1, 2, gridspec_kw={'width_ratios': [1, 1]})
+
+    n = len(array_plot)
+    ax0.axis('tight')
+    ax0.axis('off')
+    ax0.table(
+        cellText=array_plot,
+        colLabels=['日期','本土病例','本土感染者','输入病例','输入感染者'],
+        loc='center',
+        )
+
     df_plot.plot(
+        ax=ax1,
         title='上海新冠疫情趋势\n(数据来源: 上海市卫健委官网)',
         xlabel='日期',
         ylabel='人数',
-        figsize= (9,6),
+        figsize= (12,6),
     )
 
     # support Chinese font
     plt.rcParams['font.sans-serif'] = ['SimHei'] # Chinese font
     plt.rcParams['font.family'] = 'sans-serif'
     plt.rcParams["axes.unicode_minus"] = False
-
+    plt.xticks(rotation = 15)
     plt.show()
 
 def parse_params_options(argv):
@@ -158,7 +186,7 @@ def cli_main():
             plot_since_date = (datetime_today() - dt.timedelta(days=int(days_str))).strftime('%Y-%m-%d')
 
     if ('-update' in options) or (not os.path.exists(CSV_FILE)) or out_of_date(CSV_FILE):
-        parse_html_to_csv()
+        parse_html_to_csv(plot_since_date)
 
     plot_csv(plot_since_date, fit)
 
