@@ -17,6 +17,8 @@ KEYS = ['新增本土新冠肺炎确诊病例','新增本土无症状感染者',
 YESTERDAY_PATTERN = '昨日新增本土新冠肺炎确诊病例96例、无症状感染者4381例，新增境外输入性确诊病例11例、无症状感染者1例'
 CSV_FILE = 'shanghai_covid19_data.csv'
 PLOT_SINCE_DATE = '2022-03-01'
+FIT_END_DATE = '2022-03-30'
+PREDICT_DAYS = 5
 
 def parse_html_to_csv(since_date):
     since_date = (dt.datetime.strptime(since_date, '%Y-%m-%d')).date()
@@ -83,41 +85,41 @@ def func(x, a, b, c):
 
 def plot_csv( since_date, fit = False ):
     df = pd.read_csv(CSV_FILE)
-    #df['新增境外输入'] = df['新增境外输入性新冠肺炎确诊病例'] + df['新增境外输入性无症状感染者'] + df['新增境外输入']
-    #df['新增本土'] = df['新增本土新冠肺炎确诊病例'] + df['新增本土无症状感染者']
+    df['新增境外输入'] = df['新增境外输入性新冠肺炎确诊病例'] + df['新增境外输入性无症状感染者'] + df['新增境外输入']
+    df['新增本土'] = df['新增本土新冠肺炎确诊病例'] + df['新增本土无症状感染者']
     print(df)
 
-    df_plot = df[ df['日期'] > since_date ]
+    df_plot = df[ df['日期'] > since_date ].copy()
 
     if fit:
-        xdata = df_plot.index
-        xdata -= xdata[0]
-        ydata = df_plot['新增本土无症状感染者'] + df_plot['新增本土新冠肺炎确诊病例']
-        #print(xdata, ydata)
+        df_fit = df_plot[ df_plot['日期'] < FIT_END_DATE ]
+        xdata = df_fit.index - df_fit.index[0]
+        ydata = df_fit['新增本土无症状感染者'] + df_fit['新增本土新冠肺炎确诊病例']
         popt, pcov = curve_fit(func, xdata, ydata)
-        fit_ydata = func(xdata, *popt)
         fit_label = ('\n拟合曲线:\ny = a * exp(b * x) + c\na=%5.3f, b=%5.3f, c=%5.3f\n' % tuple(popt))
+
         fit_label += '\n预估新增 (确诊+无症状):'
-        for i in range(5):
-            fit_label += '\n' + (datetime_today() + dt.timedelta(i)).strftime('%Y-%m-%d') + ': '+str(int(func((xdata[-1]+1+i), *popt)))
+        fit_end_date = dt.datetime.strptime(FIT_END_DATE, '%Y-%m-%d')
+        for i in range(PREDICT_DAYS):
+            fit_label += '\n' + (fit_end_date + dt.timedelta(i)).strftime('%Y-%m-%d') + ': '+str(int(func((xdata[-1]+1+i), *popt)))
         fit_label += '\n\n阻断传播，将早日迎来拐点'
 
-    array_plot = df_plot[['日期','新增本土新冠肺炎确诊病例','新增本土无症状感染者','新增境外输入性新冠肺炎确诊病例','新增境外输入性无症状感染者']].tail(20).values
+        xdata = df_plot.index - df_plot.index[0]
+        df_plot[ fit_label ] = func(xdata, *popt)
+
+    array_table = df_plot[['日期','新增本土新冠肺炎确诊病例','新增本土无症状感染者','新增境外输入性新冠肺炎确诊病例','新增境外输入性无症状感染者']].tail(20).values
 
     df_plot.index = df_plot['日期']
-    df_plot = df_plot[ ['新增本土新冠肺炎确诊病例','新增本土无症状感染者','新增境外输入性新冠肺炎确诊病例','新增境外输入性无症状感染者'] ]
-
-    if fit:
-        df_plot[ fit_label ] = fit_ydata
+    df_plot = df_plot[ ['新增本土新冠肺炎确诊病例','新增本土无症状感染者','新增境外输入性新冠肺炎确诊病例','新增境外输入性无症状感染者', fit_label] ]
 
     # create figure 2x1
     fig, (ax0, ax1) = plt.subplots(1, 2, gridspec_kw={'width_ratios': [1, 1]})
 
-    n = len(array_plot)
+    n = len(array_table)
     ax0.axis('tight')
     ax0.axis('off')
     ax0.table(
-        cellText=array_plot,
+        cellText=array_table,
         colLabels=['日期','本土确诊','本土无症状','输入确诊','输入无症状'],
         loc='center',
         )
