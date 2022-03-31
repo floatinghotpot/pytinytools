@@ -87,9 +87,11 @@ def plot_csv( since_date, fit = False ):
     df = pd.read_csv(CSV_FILE)
     df['新增境外输入'] = df['新增境外输入性新冠肺炎确诊病例'] + df['新增境外输入性无症状感染者'] + df['新增境外输入']
     df['新增本土'] = df['新增本土新冠肺炎确诊病例'] + df['新增本土无症状感染者']
-    print(df)
+    #print(df)
 
     df_plot = df[ df['日期'] > since_date ].copy()
+    df_plot_columns = ['新增本土新冠肺炎确诊病例','新增本土无症状感染者','新增境外输入性新冠肺炎确诊病例','新增境外输入性无症状感染者']
+    array_table = df_plot[['日期'] + df_plot_columns].tail(20).values
 
     if fit:
         df_fit = df_plot[ df_plot['日期'] < FIT_END_DATE ]
@@ -106,11 +108,10 @@ def plot_csv( since_date, fit = False ):
 
         xdata = df_plot.index - df_plot.index[0]
         df_plot[ fit_label ] = func(xdata, *popt)
-
-    array_table = df_plot[['日期','新增本土新冠肺炎确诊病例','新增本土无症状感染者','新增境外输入性新冠肺炎确诊病例','新增境外输入性无症状感染者']].tail(20).values
+        df_plot_columns.append(fit_label)
 
     df_plot.index = df_plot['日期']
-    df_plot = df_plot[ ['新增本土新冠肺炎确诊病例','新增本土无症状感染者','新增境外输入性新冠肺炎确诊病例','新增境外输入性无症状感染者', fit_label] ]
+    df_plot = df_plot[ df_plot_columns ]
 
     # create figure 2x1
     fig, (ax0, ax1) = plt.subplots(1, 2, gridspec_kw={'width_ratios': [1, 1]})
@@ -128,8 +129,8 @@ def plot_csv( since_date, fit = False ):
     df_plot.plot(
         ax=ax1,
         title='趋势图',
-        xlabel='日期',
-        ylabel='人数',
+        #xlabel='日期',
+        #ylabel='人数',
         figsize= (12,6),
     )
 
