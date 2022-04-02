@@ -91,7 +91,8 @@ def plot_csv( since_date, fit = False ):
 
     df_plot = df[ df['日期'] > since_date ].copy()
     df_plot_columns = ['新增本土新冠肺炎确诊病例','新增本土无症状感染者','新增境外输入性新冠肺炎确诊病例','新增境外输入性无症状感染者']
-    array_table = df_plot[['日期'] + df_plot_columns].tail(20).values
+    df_plot['累计无症状'] = (df_plot['新增本土无症状感染者'] + df_plot['新增境外输入性无症状感染者']).cumsum()
+    array_table = df_plot[['日期'] + df_plot_columns + ['累计无症状']].tail(20).values
 
     if fit:
         df_fit = df_plot[ df_plot['日期'] < FIT_END_DATE ]
@@ -100,11 +101,11 @@ def plot_csv( since_date, fit = False ):
         popt, pcov = curve_fit(func, xdata, ydata)
         fit_label = ('\n拟合曲线:\ny = a * exp(b * x) + c\na=%5.3f, b=%5.3f, c=%5.3f\n' % tuple(popt))
 
-        fit_label += '\n预估新增 (确诊+无症状):'
+        fit_label += '\n趋势预测 (确诊+无症状):'
         fit_end_date = dt.datetime.strptime(FIT_END_DATE, '%Y-%m-%d')
         for i in range(PREDICT_DAYS):
             fit_label += '\n' + (fit_end_date + dt.timedelta(i)).strftime('%Y-%m-%d') + ': '+str(int(func((xdata[-1]+1+i), *popt)))
-        fit_label += '\n\n阻断传播，将早日迎来拐点'
+        fit_label += '\n\n若有效阻断传播，将早日迎来拐点'
 
         xdata = df_plot.index - df_plot.index[0]
         df_plot[ fit_label ] = func(xdata, *popt)
@@ -121,7 +122,7 @@ def plot_csv( since_date, fit = False ):
     ax0.axis('off')
     ax0.table(
         cellText=array_table,
-        colLabels=['日期','本土确诊','本土无症状','输入确诊','输入无症状'],
+        colLabels=['日期','本土确诊','本土无症状','输入确诊','输入无症状','累计无症状'],
         loc='center',
         )
     ax0.set_title('上海 2022 新冠疫情\n(数据来源: 上海市卫健委官网)')
