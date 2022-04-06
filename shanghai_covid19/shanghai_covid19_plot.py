@@ -91,8 +91,9 @@ def plot_csv( since_date, fit = False ):
 
     df_plot = df[ df['日期'] > since_date ].copy()
     df_plot_columns = ['新增本土新冠肺炎确诊病例','新增本土无症状感染者','新增境外输入性新冠肺炎确诊病例','新增境外输入性无症状感染者']
+    df_plot['累计确诊'] = (df_plot['新增本土新冠肺炎确诊病例'] + df_plot['新增境外输入性新冠肺炎确诊病例']).cumsum()
     df_plot['累计无症状'] = (df_plot['新增本土无症状感染者'] + df_plot['新增境外输入性无症状感染者']).cumsum()
-    array_table = df_plot[['日期'] + df_plot_columns + ['累计无症状']].tail(20).values
+    array_table = df_plot[['日期'] + df_plot_columns + ['累计确诊','累计无症状']].tail(20).values
 
     if fit:
         df_fit = df_plot[ df_plot['日期'] < FIT_END_DATE ]
@@ -105,6 +106,16 @@ def plot_csv( since_date, fit = False ):
         fit_end_date = dt.datetime.strptime(FIT_END_DATE, '%Y-%m-%d')
         for i in range(PREDICT_DAYS):
             fit_label += '\n' + (fit_end_date + dt.timedelta(i)).strftime('%Y-%m-%d') + ': '+str(int(func((xdata[-1]+1+i), *popt)))
+
+        y = df_plot['累计无症状'].iloc[-1]
+        for i in range(100):
+            dy = int(func((xdata[-1]+1+i), *popt))
+            y += dy
+            if y > 25000000 / 5:
+                fit_label += '\n\n趋势预测 累计阳性率 20%人口:\n' + (fit_end_date + dt.timedelta(i)).strftime('%Y-%m-%d') + ': '+ str(dy)
+                fit_label += '\n预计该日确诊: ' + str(int(dy*0.056))
+                break
+
         fit_label += '\n\n若有效阻断传播，将早日迎来拐点'
 
         xdata = df_plot.index - df_plot.index[0]
@@ -122,7 +133,7 @@ def plot_csv( since_date, fit = False ):
     ax0.axis('off')
     ax0.table(
         cellText=array_table,
-        colLabels=['日期','本土确诊','本土无症状','输入确诊','输入无症状','累计无症状'],
+        colLabels=['日期','本土确诊','本土无症状','输入确诊','输入无症状','累计确诊','累计无症状'],
         loc='center',
         )
     ax0.set_title('上海 2022 新冠疫情\n(数据来源: 上海市卫健委官网)')
