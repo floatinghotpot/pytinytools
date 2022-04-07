@@ -77,7 +77,13 @@ def parse_html_to_csv(since_date):
     df = pd.DataFrame(table, columns=['日期']+KEYS)
     df = df.sort_values(by='日期', ascending=True).reset_index(drop=True)
 
-    print(df)
+    df_old = pd.read_csv(CSV_FILE)
+    last_date = dt.datetime.strptime(df_old['日期'].iloc[-1], '%Y-%m-%d').date()
+
+    df = df[ df['日期'] > last_date ]
+    df = pd.concat([df_old, df]).fillna(0).astype({'新增境外输入':'int64'})
+
+    #print(df)
     df.to_csv(CSV_FILE, index=False)
 
 def func(x, a, b, c):
@@ -102,8 +108,9 @@ def plot_csv( since_date, fit = False ):
         popt, pcov = curve_fit(func, xdata, ydata)
         fit_label = ('\n拟合曲线:\ny = a * exp(b * x) + c\na=%5.3f, b=%5.3f, c=%5.3f\n' % tuple(popt))
 
-        fit_label += '\n趋势预测 (确诊+无症状):'
+        '''
         fit_end_date = dt.datetime.strptime(FIT_END_DATE, '%Y-%m-%d')
+        fit_label += '\n趋势预测 (确诊+无症状):'
         for i in range(PREDICT_DAYS):
             fit_label += '\n' + (fit_end_date + dt.timedelta(i)).strftime('%Y-%m-%d') + ': '+str(int(func((xdata[-1]+1+i), *popt)))
 
@@ -112,10 +119,10 @@ def plot_csv( since_date, fit = False ):
             dy = int(func((xdata[-1]+1+i), *popt))
             y += dy
             if y > 25000000 / 5:
-                fit_label += '\n\n趋势预测 累计阳性率 20%人口:\n' + (fit_end_date + dt.timedelta(i)).strftime('%Y-%m-%d') + ': '+ str(dy)
+                fit_label += '\n趋势预测 累计阳性率 20%人口:\n' + (fit_end_date + dt.timedelta(i)).strftime('%Y-%m-%d') + ': '+ str(dy)
                 fit_label += '\n预计该日确诊: ' + str(int(dy*0.056))
                 break
-
+'''
         fit_label += '\n\n若有效阻断传播，将早日迎来拐点'
 
         xdata = df_plot.index - df_plot.index[0]
