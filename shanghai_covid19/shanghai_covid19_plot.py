@@ -77,13 +77,12 @@ def parse_html_to_csv(since_date):
     df = pd.DataFrame(table, columns=['日期']+KEYS)
     df = df.sort_values(by='日期', ascending=True).reset_index(drop=True)
 
+    # merge with old data
     df_old = pd.read_csv(CSV_FILE)
     last_date = dt.datetime.strptime(df_old['日期'].iloc[-1], '%Y-%m-%d').date()
-
     df = df[ df['日期'] > last_date ]
-    df = pd.concat([df_old, df]).fillna(0).astype({'新增境外输入':'int64'})
+    df = pd.concat([df_old, df]).fillna(0)
 
-    #print(df)
     df.to_csv(CSV_FILE, index=False)
 
 def func(x, a, b, c):
@@ -93,15 +92,15 @@ def plot_csv( since_date, fit = False ):
     df = pd.read_csv(CSV_FILE)
     df['新增境外输入'] = df['新增境外输入性新冠肺炎确诊病例'] + df['新增境外输入性无症状感染者'] + df['新增境外输入']
     df['新增本土'] = df['新增本土新冠肺炎确诊病例'] + df['新增本土无症状感染者']
-    #print(df)
+    df['新增确诊'] = df['新增本土新冠肺炎确诊病例'] + df['新增境外输入性新冠肺炎确诊病例']
+    df['新增无症状'] = df['新增本土无症状感染者'] + df['新增境外输入性无症状感染者']
+    df['累计确诊'] = df['新增确诊'].cumsum()
+    df['累计无症状'] = df['新增无症状'].cumsum()
 
     df_plot = df[ df['日期'] > since_date ].copy()
-    df_plot['新增确诊'] = df_plot['新增本土新冠肺炎确诊病例'] + df_plot['新增境外输入性新冠肺炎确诊病例']
-    df_plot['新增无症状'] = df_plot['新增本土无症状感染者'] + df_plot['新增境外输入性无症状感染者']
     df_plot_columns = ['新增确诊','新增无症状']
-    df_plot['累计确诊'] = df_plot['新增确诊'].cumsum()
-    df_plot['累计无症状'] = df_plot['新增无症状'].cumsum()
-    array_table = df_plot[['日期'] + df_plot_columns + ['累计确诊','累计无症状']].tail(20).values
+    table_columns = ['日期'] + df_plot_columns + ['累计确诊','累计无症状']
+    array_table = df_plot[ table_columns ].tail(20).values
 
     if fit:
         df_fit = df_plot[ df_plot['日期'] < FIT_END_DATE ]
@@ -141,9 +140,9 @@ def plot_csv( since_date, fit = False ):
     ax0.axis('tight')
     ax0.axis('off')
     ax0.table(
-        cellText=array_table,
-        colLabels=['日期','新增确诊','新增无症状','累计确诊','累计无症状'],
-        loc='center',
+        cellText = array_table,
+        colLabels = table_columns,
+        loc = 'center',
         )
     ax0.set_title('上海 2022 新冠疫情\n(数据来源: 上海市卫健委官网)')
 
