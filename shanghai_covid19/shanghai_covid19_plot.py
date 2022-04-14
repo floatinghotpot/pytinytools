@@ -96,10 +96,12 @@ def plot_csv( since_date, fit = False ):
     df['新增无症状'] = df['新增本土无症状感染者'] + df['新增境外输入性无症状感染者']
     df['累计确诊'] = df['新增确诊'].cumsum()
     df['累计无症状'] = df['新增无症状'].cumsum()
+    df['累计感染'] = df['累计无症状'] + df['累计确诊']
+    df['确诊率(%)'] = (df['累计确诊'] / df['累计感染'] * 100).round(1)
 
     df_plot = df[ df['日期'] > since_date ].copy()
     df_plot_columns = ['新增确诊','新增无症状']
-    table_columns = ['日期'] + df_plot_columns + ['累计确诊','累计无症状']
+    table_columns = ['日期'] + df_plot_columns + ['累计确诊','累计无症状','确诊率(%)']
     array_table = df_plot[ table_columns ].tail(20).values
 
     if fit:
@@ -109,22 +111,26 @@ def plot_csv( since_date, fit = False ):
         popt, pcov = curve_fit(func, xdata, ydata)
         fit_label = ('\n趋势 拟合曲线:\ny = a * exp(b * x) + c\na=%5.3f, b=%5.3f, c=%5.3f\n' % tuple(popt))
 
-        '''
         fit_end_date = dt.datetime.strptime(FIT_END_DATE, '%Y-%m-%d')
+        fit_today_days = (datetime_today() - fit_end_date).days
+        predict_start_date = datetime_today() - dt.timedelta(days=PREDICT_DAYS)
         fit_label += '\n趋势预测 (确诊+无症状):'
-        for i in range(PREDICT_DAYS):
-            fit_label += '\n' + (fit_end_date + dt.timedelta(i)).strftime('%Y-%m-%d') + ': '+str(int(func((xdata[-1]+1+i), *popt)))
+        for i in range(fit_today_days):
+            predict_date = fit_end_date + dt.timedelta(i)
+            if(predict_date < predict_start_date):
+                continue
+            fit_label += '\n' + predict_date.strftime('%Y-%m-%d') + ': '+str(int(func((xdata[-1]+1+i), *popt)))
 
         y = df_plot['累计无症状'].iloc[-1]
         for i in range(100):
             dy = int(func((xdata[-1]+1+i), *popt))
             y += dy
             if y > 25000000 / 5:
-                fit_label += '\n趋势预测 累计阳性率 20%人口:\n' + (fit_end_date + dt.timedelta(i)).strftime('%Y-%m-%d') + ': '+ str(dy)
+                fit_label += '\n\n预测 累计20%人口阳性 日期:\n' + (fit_end_date + dt.timedelta(i)).strftime('%Y-%m-%d') + ': '+ str(dy)
                 fit_label += '\n预计该日确诊: ' + str(int(dy*0.056))
                 break
-'''
-        fit_label += '\n若有效阻断传播，将早日迎来拐点'
+
+        fit_label += '\n\n若有效阻断传播，将早日迎来拐点'
 
         xdata = df_plot.index - df_plot.index[0]
         df_plot[ fit_label ] = func(xdata, *popt)
