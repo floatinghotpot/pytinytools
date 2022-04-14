@@ -109,12 +109,12 @@ def plot_csv( since_date, fit = False ):
         xdata = df_fit.index - df_fit.index[0]
         ydata = df_fit['新增本土无症状感染者'] + df_fit['新增本土新冠肺炎确诊病例']
         popt, pcov = curve_fit(func, xdata, ydata)
-        fit_label = ('\n趋势 拟合曲线:\ny = a * exp(b * x) + c\na=%5.3f, b=%5.3f, c=%5.3f\n' % tuple(popt))
+        fit_label = ('\n原趋势 拟合曲线:\ny = a * exp(b * x) + c\na=%5.3f, b=%5.3f, c=%5.3f\n' % tuple(popt))
 
         fit_end_date = dt.datetime.strptime(FIT_END_DATE, '%Y-%m-%d')
         fit_today_days = (datetime_today() - fit_end_date).days
         predict_start_date = datetime_today() - dt.timedelta(days=PREDICT_DAYS)
-        fit_label += '\n趋势预测 (确诊+无症状):'
+        fit_label += '\n原趋势 预测 (确诊+无症状):'
         for i in range(fit_today_days):
             predict_date = fit_end_date + dt.timedelta(i)
             if(predict_date < predict_start_date):
@@ -126,8 +126,8 @@ def plot_csv( since_date, fit = False ):
             dy = int(func((xdata[-1]+1+i), *popt))
             y += dy
             if y > 25000000 / 5:
-                fit_label += '\n\n预测 累计20%人口阳性 日期:\n' + (fit_end_date + dt.timedelta(i)).strftime('%Y-%m-%d') + ': '+ str(dy)
-                fit_label += '\n预计该日确诊: ' + str(int(dy*0.056))
+                fit_label += '\n\n原趋势 累计20%人口阳性 日期:\n' + (fit_end_date + dt.timedelta(i)).strftime('%Y-%m-%d') + ': '+ str(dy)
+                fit_label += '\n该日将确诊: ' + str(int(dy* df['确诊率(%)'].iloc[-1]/100.0))
                 break
 
         fit_label += '\n\n若有效阻断传播，将早日迎来拐点'
