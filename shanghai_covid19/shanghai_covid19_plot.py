@@ -13,7 +13,7 @@ __version__ = '1.0.0'
 HEADERS = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36'}
 SHANGHAI_GOV_URL = 'https://wsjkw.sh.gov.cn/xwfb/index{1}.html'
 PARSE_PAGES = 50
-KEYS = ['新增本土新冠肺炎确诊病例','新增本土无症状感染者','新增境外输入性新冠肺炎确诊病例','新增境外输入性无症状感染者','治愈出院','解除医学观察无症状感染者','新增境外输入']
+KEYS = ['新增本土新冠肺炎确诊病例','新增本土无症状感染者','新增境外输入性新冠肺炎确诊病例','新增境外输入性无症状感染者','治愈出院','解除医学观察']
 YESTERDAY_PATTERN = '昨日新增本土新冠肺炎确诊病例96例、无症状感染者4381例，新增境外输入性确诊病例11例、无症状感染者1例'
 CSV_FILE = 'shanghai_covid19_data.csv'
 PLOT_SINCE_DATE = '2022-03-01'
@@ -41,7 +41,7 @@ def parse_html_to_csv(since_date):
                 print(date, line)
 
                 result = re.findall(r'\d+', line)
-                row = [date, result[0], result[1], result[2], result[3], 0, 0, 0]
+                row = [date, result[0], result[1], result[2], result[3], 0, 0]
                 table.append(row)
 
             elif ' target="_blank">上海20' in line:
@@ -64,10 +64,12 @@ def parse_html_to_csv(since_date):
                             pass
                         elif item.startswith('无'):
                             pass
-                        elif k in item:
-                            n_str = item.split(k)[1].split('例')[0]
-                            if n_str.isdigit():
-                                n = int(n_str)
+                        elif item.startswith(k):
+                            result = re.findall(r'\d+', item)
+                            n = result[0]
+                            #n_str = item.split(k)[1].split('例')[0]
+                            #if n_str.isdigit():
+                            #    n = int(n_str)
                     row.append(n)
                 table.append(row)
 
@@ -79,6 +81,8 @@ def parse_html_to_csv(since_date):
 
     # merge with old data
     df_old = pd.read_csv(CSV_FILE)
+    if('/' in df_old['日期'].iloc[-1]):
+        df_old['日期'] = pd.to_datetime(df_old['日期'], format='%m/%d/%Y').dt.strftime('%Y-%m-%d')
     last_date = dt.datetime.strptime(df_old['日期'].iloc[-1], '%Y-%m-%d').date()
     df = df[ df['日期'] > last_date ]
     df = pd.concat([df_old, df]).fillna(0)
@@ -90,7 +94,7 @@ def func(x, a, b, c):
 
 def plot_csv( since_date, fit = False ):
     df = pd.read_csv(CSV_FILE)
-    df['新增境外输入'] = df['新增境外输入性新冠肺炎确诊病例'] + df['新增境外输入性无症状感染者'] + df['新增境外输入']
+    df['新增境外输入'] = df['新增境外输入性新冠肺炎确诊病例'] + df['新增境外输入性无症状感染者']
     df['新增本土'] = df['新增本土新冠肺炎确诊病例'] + df['新增本土无症状感染者']
     df['新增确诊'] = df['新增本土新冠肺炎确诊病例'] + df['新增境外输入性新冠肺炎确诊病例']
     df['新增无症状'] = df['新增本土无症状感染者'] + df['新增境外输入性无症状感染者']
