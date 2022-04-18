@@ -130,8 +130,9 @@ def plot_csv( since_date, fit = False ):
             dy = int(func((xdata[-1]+1+i), *popt))
             y += dy
             if y > 25000000 / 5:
-                fit_label += '\n\n原趋势 累计20%人口阳性 日期:\n' + (fit_end_date + dt.timedelta(i)).strftime('%Y-%m-%d') + ': '+ str(dy)
-                fit_label += '\n该日将确诊: ' + str(int(dy* df['确诊率(%)'].iloc[-1]/100.0))
+                fit_label += '\n\n原趋势 将于 ' + (fit_end_date + dt.timedelta(i)).strftime('%Y-%m-%d') + '\n感染累计20%人口，\n该日将'
+                fit_label += '\n感染：'+ str(dy)
+                fit_label += '\n确诊: ' + str(int(dy* df['确诊率(%)'].iloc[-1]/100.0))
                 break
 
         fit_label += '\n\n若有效阻断传播，将早日迎来拐点'
