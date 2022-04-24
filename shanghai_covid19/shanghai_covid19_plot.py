@@ -17,8 +17,8 @@ __version__ = '1.0.0'
 HEADERS = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36'}
 SHANGHAI_GOV_URL = 'https://wsjkw.sh.gov.cn/xwfb/index{1}.html'
 PARSE_PAGES = 50
-COLS = ['新增本土确诊','新增本土无症状','新增输入确诊','新增输入无症状','治愈出院','解除观察','在院治疗','转归病例','管控确诊','管控无症状']
-PATTERNS = ['新增本土新冠肺炎确诊病例','新增本土无症状感染者','新增境外输入性新冠肺炎确诊病例','新增境外输入性无症状感染者','治愈出院','解除医学观察无症状感染者/解除医学观察本土无症状感染者','在院治疗']
+COLS = ['新增本土确诊','新增本土无症状','新增输入确诊','新增输入无症状','治愈出院','解除观察','在院治疗','新增死亡','转归病例','管控确诊','管控无症状']
+PATTERNS = ['新增本土新冠肺炎确诊病例','新增本土无症状感染者','新增境外输入性新冠肺炎确诊病例','新增境外输入性无症状感染者','治愈出院','解除医学观察无症状感染者/解除医学观察本土无症状感染者','在院治疗','新增本土死亡病例/新增本土死亡']
 YESTERDAY_PATTERN = '昨日新增本土新冠肺炎确诊病例96例、无症状感染者4381例，新增境外输入性确诊病例11例、无症状感染者1例'
 CSV_FILE = 'shanghai_covid19_data.csv'
 SINCE_DATE = '2022-02-26'
@@ -35,21 +35,19 @@ def get_html_text(html: str):
     parser = HTMLParser()
     parser.text = ''
     parser.feed(html)
-
     return parser.text.strip()
 
-def merge_with_old_data(df):
+def parse_html_to_csv(since_date, test= False):
+    df_old = None
+    since_date = (dt.datetime.strptime(since_date, '%Y-%m-%d')).date()
+
     if os.path.exists(CSV_FILE):
         df_old = pd.read_csv(CSV_FILE)
-        if('/' in df_old['日期'].iloc[-1]):
-            df_old['日期'] = pd.to_datetime(df_old['日期'], format='%m/%d/%Y').dt.strftime('%Y-%m-%d')
-        last_date = dt.datetime.strptime(df_old['日期'].iloc[-1], '%Y-%m-%d').date()
-        df = df[ df['日期'] > last_date ]
-        df = pd.concat([df_old, df]).fillna(0)
-    return df
-
-def parse_html_to_csv(since_date, test= False):
-    since_date = (dt.datetime.strptime(since_date, '%Y-%m-%d')).date()
+        if '/' in df_old['日期'].iloc[-1]:
+            df_old['日期'] = pd.to_datetime(df_old['日期'], format='%m/%d/%Y').dt.date
+        elif '-' in df_old['日期'].iloc[-1]:
+            df_old['日期'] = pd.to_datetime(df_old['日期'], format='%Y-%m-%d').dt.date
+        since_date = df_old['日期'].iloc[-1]
 
     table = []
     for i in range(PARSE_PAGES):
@@ -84,6 +82,9 @@ def parse_html_to_csv(since_date, test= False):
                 title = items[1]
             else:
                 continue
+
+            if (date is not None) and (date < since_date):
+                break
 
             url = 'https://wsjkw.sh.gov.cn' + url
             r = requests.get(url, headers=HEADERS)
@@ -123,6 +124,10 @@ def parse_html_to_csv(since_date, test= False):
             break
 
     df = pd.DataFrame(table, columns=['日期']+COLS)
+
+    if df_old is not None:
+        df = pd.concat([df_old, df[df['日期'] > since_date]]).fillna(0)
+
     df = df.sort_values(by='日期', ascending=True).reset_index(drop=True)
     print( tb.tabulate(df, headers='keys') )
 
@@ -158,7 +163,7 @@ def draw_table( since_date ):
     df = load_data()
     df_plot = df[ df['日期'] > since_date ].copy()
 
-    table_columns = ['日期','新增确诊','新增无症状','治愈出院','解除观察']
+    table_columns = ['日期','新增确诊','新增无症状','治愈出院','解除观察','新增死亡']
     table_array = df_plot[ table_columns ].tail(32).values
 
     fig, ax1 = plt.subplots(nrows=1, ncols=1, figsize = (6,8), tight_layout = True)
