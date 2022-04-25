@@ -143,12 +143,16 @@ def load_data():
 
     df['累计确诊'] = df['新增确诊'].cumsum()
     df['累计无症状'] = df['新增无症状'].cumsum()
-    df['累计感染'] = df['累计无症状'] + df['累计确诊']
+    df['累计转归'] = df['转归病例'].cumsum()
+    df['累计感染'] = df['累计无症状'] + df['累计确诊'] - df['累计转归']
     df['累计治愈出院'] = df['治愈出院'].cumsum()
     df['累计解除观察'] = df['解除观察'].cumsum()
 
-    df['隔离观察中'] = df['累计感染'] - df['累计解除观察']
+    df['隔离观察中'] = df['累计无症状'] - df['累计解除观察']
+
     df['确诊率(%)'] = (df['累计确诊'] / df['累计感染'] * 100).round(1)
+    df['感染者每天死亡率'] = df['新增死亡'] / df['累计感染'] * 100000
+    df['参考每天死亡率(疫情前2021年平均)'] = 13.9 / 2489.43 / 365.0 * 100000
 
     df['新增确诊+无症状'] = df['新增确诊'] + df['新增无症状']
     df['新增受控确诊+无症状'] = df['转归病例'] + df['管控确诊'] + df['管控无症状'] + df['新增输入确诊'] + df['新增输入无症状']
@@ -228,13 +232,15 @@ def plot_csv( since_date, fit = False ):
     plt.close('all')
     fig = plt.figure()
     fig.set_figwidth(8)
-    fig.set_figheight(10)
-    ax1 = plt.subplot(321)
-    ax2 = plt.subplot(322)
-    ax3 = plt.subplot(323)
-    ax4 = plt.subplot(324)
-    ax5 = plt.subplot(325)
-    ax6 = plt.subplot(326)
+    fig.set_figheight(12)
+    ax1 = plt.subplot(421)
+    ax2 = plt.subplot(422)
+    ax3 = plt.subplot(423)
+    ax4 = plt.subplot(424)
+    ax5 = plt.subplot(425)
+    ax6 = plt.subplot(426)
+    ax7 = plt.subplot(427)
+    ax8 = plt.subplot(428)
 
     plot_config = [
         [ax1, '确诊病例 新增', ['新增确诊','治愈出院']],
@@ -242,7 +248,9 @@ def plot_csv( since_date, fit = False ):
         [ax3, '野生(不在管控中)确诊+无症状', ['野生确诊+无症状']],
         [ax4, '新增确诊+无症状 野生占比(%)', ['野生占比(%)']],
         [ax5, '确诊病例 累计', ['累计确诊','累计治愈出院','在院治疗']],
-        [ax6, '无症状感染者 累计', ['累计无症状','累计解除观察','隔离观察中']],
+        [ax6, '感染者 累计', ['累计感染','累计无症状','累计解除观察','隔离观察中']],
+        [ax7, '死亡病例 新增', ['新增死亡']],
+        [ax8, '每天死亡率(/10万人/天)', ['感染者每天死亡率','参考每天死亡率(疫情前2021年平均)']]
     ]
     for params in plot_config:
         ax = params[0]
