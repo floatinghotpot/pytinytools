@@ -73,11 +73,11 @@ def parse_html_to_csv(since_date, test= False):
                 date = (dt.datetime.strptime(date_str, '%Y-%m-%d') - dt.timedelta(1)).date()
                 title = title.replace('昨日','')
                 pass
-            elif title.startswith('上海2022年'):
+            elif title.startswith('上海2022年') or title.startswith('海2022年'):
                 items = title.split('日，')
                 if '年' not in items[0]:
                     continue
-                date_str = items[0].replace('上海','').replace('年','-').replace('月','-').replace('日','')
+                date_str = items[0].replace('上海','').replace('海','').replace('年','-').replace('月','-').replace('日','')
                 date = dt.datetime.strptime(date_str, '%Y-%m-%d').date()
                 title = items[1]
             else:
@@ -103,13 +103,14 @@ def parse_html_to_csv(since_date, test= False):
                 row.append(n)
 
             # 其中15例确诊病例为此前无症状感染者转归，12例确诊病例和19027例无症状感染者在隔离管控中发现
+            # 其中5062例确诊病例为既往无症状感染者转归
             # 其中17例确诊病例和2833例无症状感染者在隔离管控中发现
-            result = re.findall('其中' + r'\d+' + '例确诊病例为此前无症状感染者转归', text)
+            convert_case = 0
+            result = re.findall('其中' + r'\d+' + '例确诊病例为.*无症状感染者转归', text)
             if len(result)>0:
                 result = re.findall(r'\d+', result[0])
-                row += result
-            else:
-                row += [0]
+                convert_case = int(result[0])
+            row += [ convert_case ]
 
             result = re.findall(r'\d+' + '例确诊病例和' + r'\d+' + '例无症状感染者在隔离管控中发现', text)
             if len(result)>0:
